@@ -1,0 +1,177 @@
+import { test, expect } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+
+test('complete journey, conditional fields, review, results, edits and reset',async({page})=>{
+ const exceptions=[];page.on('pageerror',e=>exceptions.push(e.message));
+ await page.goto('/');
+ await page.getByRole('button',{name:'Continue',exact:true}).click();
+ await expect(page.getByRole('alert')).toContainText('Enter your age');
+ await page.getByLabel('How old are you?').fill('52');
+ await page.getByLabel('Height',{exact:true}).fill('180');
+ await page.getByLabel('Weight',{exact:true}).fill('80');
+ await expect(page.locator('#bmi-preview')).toContainText('24.7');
+ await page.getByLabel('Imperial · ft + in / lb').check();
+ await expect(page.getByLabel('Height — feet',{exact:true})).toHaveValue('5');
+ await expect(page.getByLabel('Height — inches',{exact:true})).toHaveValue('10.87');
+ await page.getByRole('button',{name:'Continue',exact:true}).click();
+ await page.getByLabel('Currently',{exact:true}).check();
+ await page.getByLabel('Average cigarettes per day').fill('20');
+ await page.getByLabel('Total years smoked').fill('25');
+ await expect(page.locator('#pack-preview')).toContainText('25.0');
+ await page.getByRole('button',{name:'Continue',exact:true}).click();
+ await page.getByLabel('Have any blood relatives had cancer?').selectOption('yes');
+ await page.locator('[data-key="relation"]').selectOption('parent');
+ await page.locator('[data-key="cancer"]').selectOption('colorectal');
+ await page.locator('[data-key="age"]').selectOption('under50');
+ await page.getByRole('button',{name:'Continue',exact:true}).click();
+ await page.getByLabel('Moderate physical activity per week').selectOption('low');
+ await page.getByRole('button',{name:'Continue',exact:true}).click();
+ await page.getByLabel('Indoor tanning bed use').selectOption('current');
+ await page.getByRole('button',{name:'Continue',exact:true}).click();
+ await page.getByLabel('New or persistent unexplained symptoms?').selectOption('yes');
+ await page.getByRole('button',{name:'Continue',exact:true}).click();
+ for(const id of ['breast','prostate'])await page.locator(`#${id}`).selectOption('yes');
+ for(const id of ['cervix','uterus','ovaries'])await page.locator(`#${id}`).selectOption('no');
+ await page.getByRole('button',{name:'Continue',exact:true}).click();
+ await page.getByRole('button',{name:'Show my results'}).click();
+ await expect(page.getByRole('alert')).toContainText('acknowledge');
+ await page.locator('#consent').check();
+ await page.getByRole('button',{name:'Show my results'}).click();
+ await expect(page.locator('.results h1')).toContainText('Do something.');
+ await expect(page.locator('.clinical-alert').first()).toContainText('symptoms need medical evaluation');
+ await page.locator('.cancer-card').first().locator('summary').click();
+ await expect(page.locator('.cancer-detail').first()).toContainText('25.0 pack-years');
+ await page.locator('.additional-cancers>summary').click();
+ await expect(page.locator('.additional-cancers .cancer-card')).toHaveCount(6);
+ await expect(page.locator('.cancer-card').filter({hasText:'Cervical'}).locator('summary')).toContainText('Not applicable');
+ await page.getByRole('button',{name:'Edit my answers'}).click();
+ await page.getByRole('button',{name:'Step 1: The basics'}).click();
+ await expect(page.getByLabel('How old are you?')).toHaveValue('52');
+ await page.getByRole('button',{name:'Step 8: Review & results'}).click();
+ await page.getByRole('button',{name:'Show my results'}).click();
+ await page.getByRole('button',{name:'Clear my answers & start over'}).click();
+ await page.getByRole('button',{name:'Clear my answers ↗',exact:true}).click();
+ await expect(page.getByLabel('How old are you?')).toHaveValue('');
+ expect(exceptions).toEqual([]);
+});
+
+test('light and dark screens pass accessibility checks and fit mobile',async({page})=>{
+ for(const colorScheme of ['light','dark']){
+  await page.emulateMedia({colorScheme,reducedMotion:'reduce'});
+  await page.setViewportSize({width:1440,height:1100});await page.goto('/');
+  await page.screenshot({path:`test-results/desktop-${colorScheme}.png`,fullPage:true});
+  const findings=await new AxeBuilder({page}).analyze();
+  expect(findings.violations).toEqual([]);
+  await page.setViewportSize({width:390,height:844});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
+  await page.screenshot({path:`test-results/mobile-${colorScheme}.png`,fullPage:true});
+ }
+});
+
+test('privacy, dialogs, unknown answers and results accessibility',async({page})=>{
+ const requests=[];page.on('request',r=>requests.push(r));
+ await page.goto('/');
+ await page.getByRole('button',{name:'The science',exact:true}).click();
+ await expect(page.getByRole('dialog')).toContainText('not a validated cancer prediction model');
+ await page.keyboard.press('Escape');
+ await expect(page.getByRole('dialog')).not.toBeVisible();
+ await page.getByLabel('How old are you?').fill('30');
+ for(let i=0;i<7;i++)await page.getByRole('button',{name:'Continue',exact:true}).click();
+ await page.locator('#consent').check();
+ await page.getByRole('button',{name:'Show my results'}).click();
+ await expect(page.locator('.coverage')).toContainText('skipped or uncertain');
+ await page.locator('.additional-cancers>summary').click();
+ await page.screenshot({path:'test-results/results.png',fullPage:true});
+ const findings=await new AxeBuilder({page}).analyze();expect(findings.violations).toEqual([]);
+ expect(await page.evaluate(()=>[localStorage.length,sessionStorage.length,document.cookie])).toEqual([0,0,'']);
+ expect(requests.filter(r=>r.method()!=='GET')).toHaveLength(0);
+ expect(requests.filter(r=>!new URL(r.url()).hostname.match(/^(127\.0\.0\.1|localhost)$/))).toHaveLength(0);
+ await page.reload();await expect(page.getByLabel('How old are you?')).toHaveValue('');
+});
+
+test('narrow mobile journey revalidates edited earlier answers before results',async({page})=>{
+ await page.setViewportSize({width:320,height:740});
+ await page.goto('/');
+ await page.getByLabel('How old are you?').fill('50');
+ await page.getByRole('button',{name:'Continue',exact:true}).click();
+ await page.getByLabel('Currently',{exact:true}).check();
+ await page.getByLabel('Total years smoked').fill('35');
+ for(let i=1;i<7;i++){
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
+  await page.getByRole('button',{name:'Continue',exact:true}).click();
+ }
+ await page.locator('#consent').check();
+ await page.getByRole('button',{name:'Step 1: The basics',exact:true}).click();
+ await page.getByLabel('How old are you?').fill('25');
+ await page.getByRole('button',{name:'Step 8: Review & results',exact:true}).click();
+ await page.getByRole('button',{name:'Show my results'}).click();
+ await expect(page.getByRole('alert')).toContainText('Years smoked cannot exceed your age');
+ await page.getByLabel('Never',{exact:true}).check();
+ await page.getByRole('button',{name:'Step 8: Review & results',exact:true}).click();
+ await page.getByRole('button',{name:'Show my results'}).click();
+ await expect(page.locator('.results h1')).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
+});
+
+
+test('14-year-old mobile journey uses feet plus inches and a clearly labeled teen exposure score',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('/');
+ await page.getByLabel('How old are you?').fill('13');
+ await page.getByRole('button',{name:'Continue',exact:true}).click();
+ await expect(page.getByRole('alert')).toContainText('14');
+ await page.getByLabel('How old are you?').fill('14');
+ await expect(page.locator('#age-context')).toContainText('teen prevention summary');
+ await page.getByLabel('Imperial · ft + in / lb').check();
+ await page.getByLabel('Height — feet',{exact:true}).fill('5');
+ await page.getByLabel('Height — inches',{exact:true}).fill('12');
+ await page.getByRole('button',{name:'Continue',exact:true}).click();
+ await expect(page.getByRole('alert')).toContainText('11.99');
+ await page.getByLabel('Height — inches',{exact:true}).fill('8');
+ await page.getByLabel('Weight',{exact:true}).fill('140');
+ await expect(page.locator('#bmi-preview')).not.toContainText('Estimated BMI');
+ await page.getByLabel('Metric · cm / kg').check();
+ await expect(page.getByLabel('Height',{exact:true})).toHaveValue('172.72');
+ await page.getByLabel('Imperial · ft + in / lb').check();
+ await expect(page.getByLabel('Height — feet',{exact:true})).toHaveValue('5');
+ await expect(page.getByLabel('Height — inches',{exact:true})).toHaveValue('8');
+ await page.getByRole('button',{name:'Continue',exact:true}).click();
+ await page.getByRole('button',{name:'Step 1: The basics',exact:true}).click();
+ await page.evaluate(()=>window.scrollTo(0,0));
+ await page.screenshot({path:'test-results/teen-imperial.png',fullPage:true});
+ for(let i=0;i<3;i++)await page.getByRole('button',{name:'Continue',exact:true}).click();
+ await expect(page.getByLabel('How often do you move or play actively?')).toBeVisible();
+ await page.getByRole('button',{name:'Continue',exact:true}).click();
+ await page.getByLabel('Indoor tanning bed use').selectOption('current');
+ await page.getByRole('button',{name:'Continue',exact:true}).click();
+ await page.getByLabel('New or persistent unexplained symptoms?').selectOption('yes');
+ await page.getByRole('button',{name:'Continue',exact:true}).click();
+ await expect(page.locator('#menopause')).toHaveCount(0);
+ await expect(page.locator('#prostate')).toHaveCount(0);
+ await page.getByLabel('Have you received the HPV vaccine?').selectOption('unknown');
+ await page.getByLabel('Is there someone safe you can talk to about your health?').selectOption('no');
+ await page.getByRole('button',{name:'Continue',exact:true}).click();
+ await expect(page.locator('#screening')).toHaveCount(0);
+ await page.getByLabel('Has a clinician recommended follow-up for you?').selectOption('help');
+ await page.locator('#consent').check();
+ await page.getByRole('button',{name:'Show my results'}).click();
+ await expect(page.locator('.teen-results')).toBeVisible();
+ await expect(page.locator('.clinical-alert')).toContainText('medical evaluation');
+ await expect(page.locator('.teen-results')).toContainText('school nurse');
+ await expect(page.locator('.big-score')).toContainText('15');
+ await expect(page.locator('.score-panel')).toContainText('Unvalidated and potentially inaccurate');
+ await expect(page.locator('.score-panel')).toContainText('Not a percentage chance of cancer');
+ await expect(page.locator('.cancer-card')).toHaveCount(0);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
+ expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
+ await page.evaluate(()=>{document.activeElement?.blur();window.scrollTo(0,0);});
+ await page.screenshot({path:'test-results/teen-results.png',fullPage:true});
+ // Age edits must select the appropriate path without scoring stale teen answers.
+ await page.getByRole('button',{name:'Edit my answers'}).click();
+ await page.getByRole('button',{name:'Step 1: The basics',exact:true}).click();
+ await page.getByLabel('How old are you?').fill('18');
+ await page.getByRole('button',{name:'Continue',exact:true}).click();
+ await page.getByRole('button',{name:'Step 7: Hormones & anatomy',exact:true}).click();
+ await expect(page.locator('#menopause')).toBeVisible();
+ await expect(page.locator('#hpvVaccine')).toHaveCount(0);
+});

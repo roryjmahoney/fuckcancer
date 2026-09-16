@@ -1,0 +1,71 @@
+name: Bug report
+description: Something in the questionnaire, results or interface behaves incorrectly.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug. **Do not include personal health information** in this issue — your answers never leave your browser, and they should not end up in a public issue tracker either. Describe the inputs generically ("age 52, former smoker") rather than pasting anything identifying.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you see, and what did you expect instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Which questionnaire section, which answers, which button.
+      placeholder: |
+        1. Go to section "Smoking & alcohol"
+        2. Answer ... with ...
+        3. Continue to results
+        4. The score shows ... but should show ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which area?
+      options:
+        - Questionnaire / form fields
+        - Validation or error messages
+        - Scoring or results
+        - Teen (14–17) pathway
+        - Layout, theme or print
+        - Accessibility (keyboard, screen reader, contrast)
+        - Build, dev server or tests
+        - Something else
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Browser and OS
+      placeholder: Firefox 142 on Fedora 42 / Safari 18 on iOS 26
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: v1.0.0, or the commit SHA you are running
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
+        - label: This issue contains no personal health information.
+          required: true

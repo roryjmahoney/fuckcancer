@@ -1,0 +1,55 @@
+name: Content or accuracy correction
+description: A question, explanation, weighting, source link or disclaimer is wrong, misleading or out of date.
+labels: ["content", "accuracy"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This project's scores are **authored heuristics, not a validated clinical model** — see the Medical limitations section of the README. Corrections that make the wording more honest, better sourced, or less likely to be mistaken for medical advice are especially welcome.
+
+        Please note: a report that the score "seems too high" or "too low" for a given person is not actionable on its own, because the index is not a probability. Reports that a *statement* is factually wrong, an *explanation* misrepresents the evidence, or a *disclaimer* is missing where a score is shown, are very actionable.
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of correction is this?
+      options:
+        - A factual statement is wrong or out of date
+        - An explanation misrepresents the underlying evidence
+        - A source link is dead, wrong or not reputable
+        - A disclaimer is missing, buried or too weak
+        - A question is confusing, leading or excludes people
+        - A weighting or threshold is indefensible even as a disclosed heuristic
+    validations:
+      required: true
+
+  - type: textarea
+    id: where
+    attributes:
+      label: Where is it?
+      description: Quote the exact on-screen text, or give the file and line (for example `src/assessment.js:131`).
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong with it?
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested replacement
+      description: Proposed wording, weighting or link.
+    validations:
+      required: false
+
+  - type: textarea
+    id: sources
+    attributes:
+      label: Supporting sources
+      description: Links to NCI, CDC, ACS, WHO/IARC, Cancer Research UK, or peer-reviewed literature. Please prefer guideline bodies and reviews over single studies or news coverage.
+    validations:
+      required: true

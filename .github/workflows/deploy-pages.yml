@@ -1,0 +1,67 @@
+# Optional: publish the built site to GitHub Pages.
+#
+# This does NOT run automatically on push. Enable Pages for the repository
+# (Settings -> Pages -> Source: GitHub Actions) and then either publish a release or run
+# this workflow manually from the Actions tab.
+#
+# Note: GitHub Pages does not read public/_headers, so a Pages deployment will NOT carry
+# the Content-Security-Policy and hardening headers this project ships. For a public
+# instance, prefer Netlify or Cloudflare Pages, or a host where you control headers.
+name: Deploy to GitHub Pages
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm test
+
+      # The deploy path must not be a weaker gate than the pull-request path.
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - run: npm run test:e2e
+
+      # A project Pages site is served from /<repo>/, so the asset base must match.
+      - name: Build
+        run: npm run build -- --base=/${{ github.event.repository.name }}/
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

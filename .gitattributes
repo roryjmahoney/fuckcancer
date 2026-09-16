@@ -1,0 +1,9 @@
+* text=auto eol=lf
+
+*.png binary
+*.woff2 binary
+*.svg text
+
+# Collapsed by default in pull request diffs, but still reviewable — lockfile changes are
+# in scope for security review (see SECURITY.md), so do not suppress the diff entirely.
+package-lock.json linguist-generated=true

@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Medical question about your own health
+    url: https://www.cancer.gov/about-cancer/causes-prevention/risk
+    about: This project cannot answer questions about your personal cancer risk. Talk to a clinician. The National Cancer Institute has reviewed information on risk factors and prevention.
+  - name: Report a security or privacy issue
+    url: https://github.com/roryjmahoney/fuckcancer/security/advisories/new
+    about: Please report vulnerabilities privately instead of opening a public issue. See SECURITY.md.
+  - name: Questions and ideas
+    url: https://github.com/roryjmahoney/fuckcancer/discussions
+    about: Open-ended questions, ideas and general discussion belong here.
