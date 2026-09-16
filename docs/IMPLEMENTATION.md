@@ -54,10 +54,15 @@ Three code changes came out of the release audit rather than the feature work:
   disabled in CI so a runner cannot test a stale server.
 
 Verification for this release: 20/20 unit tests, 5/5 Playwright journeys (3 `axe` passes,
-320px/390px/1440px layouts), and a clean production build. The browser run used Chrome
-152.0.7977.82 via `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`; the Chromium build pinned by
-playwright-core 1.63.0 (revision 1243 / Chrome for Testing 153.0.8010.12) could not be
-downloaded in this environment, so CI will be the first run against the pinned browser.
+320px/390px/1440px layouts), and a clean production build.
+
+Local verification used Chrome 152.0.7977.82 via `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`,
+because the Chromium build pinned by playwright-core 1.63.0 would not download on the
+development machine — the same timeout recorded in the September 2026 entry above. That
+gap is now closed: the first CI run on the release commit installed the pinned build
+(Chrome for Testing 153.0.8010.12, playwright chromium v1243) and all five journeys passed
+against it in 32s, so the suite is confirmed green on the browser CI actually uses and the
+executable-path override is a local convenience rather than a requirement.
 
 Known, deliberately unresolved at v1.0.0 — these are product decisions, not oversights to
 hide:
